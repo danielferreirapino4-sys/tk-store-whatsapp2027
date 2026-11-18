@@ -1,4 +1,4 @@
-import makeWASocket,{DisconnectReason,useMultiFileAuthState,jidNormalizedUser,Browsers} from '@whiskeysockets/baileys';
+2import makeWASocket,{DisconnectReason,useMultiFileAuthState,jidNormalizedUser,Browsers} from '@whiskeysockets/baileys';
 import pino from 'pino';
 import {mkdirSync} from 'node:fs';
 import {join} from 'node:path';
@@ -56,6 +56,7 @@ async function start(){
     }
     await handle({jid,phoneJid,text});
    }).catch(()=>console.error('Uma mensagem não pôde ser processada. Confira /pedidos e o atendimento; nenhum reenvio automático foi feito.'));
+  
   start().catch((erro) => {
   console.error('Falha ao iniciar:', erro.message);
   process.exit(1);
