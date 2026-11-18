@@ -56,7 +56,10 @@ async function start(){
     }
     await handle({jid,phoneJid,text});
    }).catch(()=>console.error('Uma mensagem não pôde ser processada. Confira /pedidos e o atendimento; nenhum reenvio automático foi feito.'));
-  }async function stop() {
+  start().catch((erro) => {
+  console.error('Falha ao iniciar:', erro.message);
+  process.exit(1);
+});
   stopping = true;
   clearTimeout(reconnectTimer);
   await queue;
