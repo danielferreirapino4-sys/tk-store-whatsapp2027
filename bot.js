@@ -6,7 +6,7 @@ import {Store} from './store.js';
 import {createHandler} from './handler.js';
 const dir=process.env.DATA_DIR||'./data';
 const phone=process.env.BOT_PHONE_NUMBER+5511960649533||'';
-const admin=process.env ADMIN_PHONE_NUMBER+5582996813027||'';
+const admin=process.env.ADMIN_PHONE_NUMBER+5582996813027||'';
 if(!/^[1-9]\d{9,14}$/.test(phone)||!/^[1-9]\d{9,14}$/.test(admin)||phone===admin)throw Error('Configure BOT_PHONE_NUMBER e ADMIN_PHONE_NUMBER com DDI, somente dígitos e diferentes.');
 mkdirSync(dir,{recursive:true,mode:0o700});
 const store=new Store(join(dir,'orders.sqlite3'));
