@@ -5,8 +5,8 @@ import {join} from 'node:path';
 import {Store} from './store.js';
 import {createHandler} from './handler.js';
 const dir=process.env.DATA_DIR||'./data';
-const phone=process.env.BOT_PHONE_NUMBER5511960649533
-const admin=process.env.ADMIN_PHONE_NUMBER5582996813027
+const phone = '5511958084941';
+const admin = '5582996813027';
 if(!/^[1-9]\d{9,14}$/.test(phone)||!/^[1-9]\d{9,14}$/.test(admin)||phone===admin)throw Error('Configure BOT_PHONE_NUMBER e ADMIN_PHONE_NUMBER com DDI, somente dígitos e diferentes.');
 mkdirSync(dir,{recursive:true,mode:0o700});
 const store=new Store(join(dir,'orders.sqlite3'));
@@ -56,13 +56,22 @@ async function start(){
     }
     await handle({jid,phoneJid,text});
    }).catch(()=>console.error('Uma mensagem não pôde ser processada. Confira /pedidos e o atendimento; nenhum reenvio automático foi feito.'));
-  }
+  }async function stop() {
+  stopping = true;
+  clearTimeout(reconnectTimer);
+  await queue;
+  sock?.end(undefined);
+  store.close();
+  process.exit(0);
+}
+
+process.on('SIGTERM', stop);
+process.on('SIGINT', stop);
+
+start().catch((erro) => {
+  console.error('Falha ao iniciar:', erro.message);
+  process.exit(1);
+});
  });
 }
-async function stop(){stopping=true;clearTimeout(reconnectTimer);await queue; sock?.end(undefined);store.close();process.exit(0);}
-process.on('SIGTERM',stop);process.on('SIGINT',stop);
- 
-
-  console.error("Falha ao iniciar:", erro.message);
-  process.exit(1);
 
