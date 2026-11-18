@@ -3,15 +3,19 @@ import { randomBytes,scryptSync,timingSafeEqual } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { confirm } from './store.js';
 import { catalog } from './catalog.js';
+import { Simulator } from './simulator.js';
 export function makeServer({manager,store,password,htmlPath}){
  if(!password||password.length<12)throw Error('Configure PANEL_PASSWORD com pelo menos 12 caracteres no Render.');
  const salt=randomBytes(16),hash=scryptSync(password,salt,32),sessions=new Map();
+ const simulators=new Map();
+ function drop(token){sessions.delete(token);const sim=simulators.get(token);simulators.delete(token);if(sim)sim.close().catch(()=>{});}
+ function testFor(token){if(!simulators.has(token))simulators.set(token,new Simulator());return simulators.get(token);}
  let loginAttempts=[];
  const html=readFileSync(htmlPath);
  function json(res,status,data){res.writeHead(status,{'Content-Type':'application/json; charset=utf-8'});res.end(JSON.stringify(data));}
  async function body(req){let result='';for await(const chunk of req){result+=chunk;if(Buffer.byteLength(result)>8192)throw Error('Dados muito grandes.');}return JSON.parse(result||'{}');}
- function session(req){const token=String(req.headers.cookie||'').split(';').map(s=>s.trim()).find(s=>s.startsWith('tk_session='))?.slice(11);const s=sessions.get(token);return s&&s.until>Date.now()?{...s,token}:null;}
- return createServer(async(req,res)=>{
+ function session(req){const token=String(req.headers.cookie||'').split(';').map(s=>s.trim()).find(s=>s.startsWith('tk_session='))?.slice(11);const s=sessions.get(token);if(s&&s.until<=Date.now()){drop(token);return null;}return s?{...s,token}:null;}
+ const server=createServer(async(req,res)=>{
   res.setHeader('Cache-Control','no-store');res.setHeader('X-Content-Type-Options','nosniff');res.setHeader('Referrer-Policy','no-referrer');res.setHeader('X-Frame-Options','DENY');
   res.setHeader('Content-Security-Policy',"default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self'; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'self'");
   const path=req.url?.split('?')[0];
@@ -30,7 +34,7 @@ export function makeServer({manager,store,password,htmlPath}){
     const data=await body(req);loginAttempts.push(Date.now());
     if(typeof data.password!=='string'||data.password.length>256||!timingSafeEqual(hash,scryptSync(data.password,salt,32))){json(res,401,{error:'Senha incorreta.'});return;}
     const token=randomBytes(32).toString('hex'),csrf=randomBytes(24).toString('hex');
-    for(const [key,s]of sessions)if(s.until<Date.now())sessions.delete(key);
+    for(const [key,s]of sessions)if(s.until<Date.now())drop(key);
     sessions.set(token,{csrf,until:Date.now()+8*3600000});
     const secure=req.socket.encrypted||req.headers['x-forwarded-proto']==='https';
     res.setHeader('Set-Cookie',`tk_session=${token}; HttpOnly; SameSite=Strict; Path=/; Max-Age=28800${secure?'; Secure':''}`);
@@ -43,11 +47,14 @@ export function makeServer({manager,store,password,htmlPath}){
     const q=new URL(req.url,'http://localhost').searchParams;
     json(res,200,store.page({page:q.get('page'),pageSize:q.get('pageSize'),state:q.get('state')||'open',product:q.get('product')||'',search:q.get('search')||''}));return;
    }
+   if(path==='/api/test'&&req.method==='GET'){json(res,200,testFor(s.token).view());return;}
    if(path==='/api/catalog'&&req.method==='GET'){json(res,200,{items:catalog});return;}
    if(path==='/api/stats'&&req.method==='GET'){json(res,200,store.summary());return;}
    if(req.method!=='POST'){json(res,405,{error:'Método não permitido.'});return;}
    if(req.headers['x-csrf-token']!==s.csrf){json(res,403,{error:'Sessão inválida. Entre novamente.'});return;}
    const data=await body(req);
+   if(path==='/api/test/send'){json(res,200,await testFor(s.token).message(data.text,data.role));return;}
+   if(path==='/api/test/reset'){json(res,200,await testFor(s.token).reset());return;}
    if(path==='/api/connect'){
     await manager.pair(data.phone,data.admin);json(res,200,{ok:true});return;
    }
@@ -61,9 +68,11 @@ export function makeServer({manager,store,password,htmlPath}){
     });json(res,200,{message:result});return;
    }
    if(path==='/api/logout'){
-    sessions.delete(s.token);res.setHeader('Set-Cookie','tk_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');json(res,200,{ok:true});return;
+    drop(s.token);res.setHeader('Set-Cookie','tk_session=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0');json(res,200,{ok:true});return;
    }
    json(res,404,{error:'Não encontrado.'});
   }catch(error){json(res,400,{error:error instanceof SyntaxError?'Dados inválidos.':String(error.message||'Não foi possível executar a ação.').slice(0,240)});}
  });
+ server.on('close',()=>{for(const token of [...sessions.keys()])drop(token);});
+ return server;
 }

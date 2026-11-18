@@ -1,9 +1,19 @@
-# TK STORE — painel organizado por páginas · versão 1.1
+# TK STORE — painel organizado por páginas · versão 1.2
 
 Nova versão com painel no navegador: informe o número do bot e o número do responsável, gere o código e digite-o no WhatsApp. Código, estado da conexão e pedidos ficam protegidos por senha. Não precisa colocar telefones no JavaScript nem procurar códigos nos logs.
 
+## Testar bot sem outro número
+A página **Testar bot** é uma conversa simulada, não um número de telefone real. Não recebe SMS, não usa serviços de números virtuais, não contorna cadastro no WhatsApp e não envia mensagens reais. Funciona mesmo que a sessão WhatsApp esteja desconectada.
+1. Abra Testar bot no menu do painel.
+2. Toque em Abrir menu ou envie /start.
+3. Envie 1 para abrir o streaming, /comprar 01 para compra ou /renovar 01 para renovação.
+4. Os pedidos aparecem no quadro Pedidos de teste. Toque em Simular Pix confirmado para verificar a mensagem que o cliente receberia.
+5. Os avisos do responsável aparecem ao lado. Reiniciar teste apaga somente os dados simulados.
+
+Usa o mesmo handler.js e catálogo do bot, com um banco separado em memória e transporte de mensagens local. Cada login tem seu próprio teste, sem compartilhamento de conversa entre logins. Sair, expirar o login ou reiniciar o processo apaga o teste. Mostra até 20 pedidos recentes e mantém até 120 mensagens. Não valida entrega real, compatibilidade de pareamento ou pagamento bancário.
+
 ## Atualizar o painel já conectado
-Substitua no GitHub os arquivos painel.html, http.js e store.js pelos desta versão. São os três arquivos necessários para a nova navegação. Os outros arquivos do pacote permitem uma instalação completa. O Start Command continua node server.js, e a senha continua em PANEL_PASSWORD no ambiente. Faça Deploy latest commit no Render e atualize a página do painel. Não cole o HTML dentro do bot.js.
+Substitua no GitHub os arquivos painel.html e http.js e adicione simulator.js. Se ainda estiver na versão inicial, substitua também store.js. O pacote completo inclui todos esses arquivos na pasta principal. Os outros arquivos do pacote permitem uma instalação completa. O Start Command continua node server.js, e a senha continua em PANEL_PASSWORD no ambiente. Faça Deploy latest commit no Render e atualize a página do painel. Não cole o HTML dentro do bot.js.
 
 A atualização não migra nem apaga tabelas do banco. Em hospedagem sem disco persistente, uma nova implantação pode perder a sessão e os pedidos pelo funcionamento do próprio ambiente; nesse caso, pareie novamente pelo painel. Antes de operar continuamente, configure armazenamento persistente.
 
@@ -12,6 +22,7 @@ A atualização não migra nem apaga tabelas do banco. Em hospedagem sem disco p
 - WhatsApp: formulário e código de pareamento.
 - Pedidos: busca, filtro por serviço e estado, até 8 pedidos por página, indicação Página X de Y. Inclui histórico de confirmações enviadas.
 - Serviços: categorias com quantidade de serviços e páginas, até 6 serviços por página, busca e comandos de compra. Cada serviço mostra o total de pedidos e pendências.
+- Testar bot: conversa, pedidos e confirmação de pagamento simulados, sem outro número.
 - Suporte: quatro cartões grandes para contato com o responsável, conexão, pedidos e comandos; perguntas frequentes.
 
 As contagens de páginas são calculadas a partir dos dados reais, não são valores fixos. Os contadores não representam licenças ou vagas de estoque. Não foi adicionado sistema de chamados; o suporte abre o WhatsApp do responsável cadastrado.
@@ -66,4 +77,6 @@ Para testar localmente: Node >=22.13, npm ci, definir PANEL_PASSWORD no ambiente
 
 Referências: https://render.com/docs/web-services · https://render.com/docs/disks · https://render.com/docs/free · https://github.com/WhiskeySockets/docs/blob/main/authentication/pairing-code.mdx
 
-Validação da versão 1.1: paginação e filtros testados com 20 pedidos, sem lacunas ou duplicatas; resumo de estados verificado; navegação, busca e suporte verificados com DOM simulado. Não houve implantação na conta do usuário nesta atualização.
+Validação da versão 1.2: paginação e filtros testados com 20 pedidos, sem lacunas ou duplicatas; resumo de estados verificado; navegação, busca e suporte verificados com DOM simulado. Não houve implantação na conta do usuário nesta atualização.
+
+Validação do simulador: testes confirmam isolamento do banco real, nenhum envio pelo transporte real, bloqueio de confirmação pelo cliente, separação entre logins, reset isolado e fluxo completo de compra pelo DOM.

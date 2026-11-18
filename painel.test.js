@@ -54,3 +54,25 @@ test('paginação por serviço cobre todos os pedidos e conta estados reais',()=
  const id=first.orders[0].id;s.claim(id);s.finish(id,'sent');assert.equal(s.page({product:p.name,state:'open'}).total,18);assert.equal(s.page({product:p.name,state:'sent'}).total,1);assert.equal(s.page({search:'Serviço B',state:'all'}).total,1);assert.equal(s.page({page:999}).page,3);
  const totals=s.summary();assert.equal(totals.total,20);assert.equal(totals.pending,19);assert.equal(totals.sent,1);assert.equal(totals.byProduct.find(p=>p.product==='Serviço A').total,19);s.close();
 });
+test('simulador usa atendimento real e mantém pagamentos fora do WhatsApp e do banco real',async()=>{
+ const t=setup();let outgoing=0;
+ // O transporte real não será aberto: a sessão permanece desconectada.
+ t.manager.current={send:async()=>{outgoing++;throw Error('Envio real proibido no teste');},end(){}};
+ const real=t.store.create('cliente-real',{name:'Produto real',cents:1000},'compra');
+ const server=makeServer({manager:t.manager,store:t.store,password:'senha-simulador-teste',htmlPath:new URL('./painel.html',import.meta.url)});await new Promise(r=>server.listen(0,'127.0.0.1',r));const base='http://127.0.0.1:'+server.address().port;let cookie='',csrf='';
+ async function call(path,data,token=true){const headers={Cookie:cookie};if(data!==undefined){headers['Content-Type']='application/json';headers['X-TK-Panel']='1';if(token)headers['X-CSRF-Token']=csrf;}return fetch(base+path,{method:data===undefined?'GET':'POST',headers,body:data===undefined?undefined:JSON.stringify(data)});}
+ try{
+  assert.equal((await call('/api/test')).status,401);
+  let login=await call('/api/login',{password:'senha-simulador-teste'});cookie=login.headers.get('set-cookie').split(';')[0];csrf=(await login.json()).csrf;
+  assert.equal((await call('/api/test/send',{text:'/start'},false)).status,403);
+  let data=await(await call('/api/test/send',{text:'/start'})).json();assert.equal(data.simulated,true);assert.ok(data.messages.some(m=>m.text.includes('TK STORE')));
+  data=await(await call('/api/test/send',{text:'/comprar 01'})).json();assert.equal(data.totalOrders,1);assert.equal(t.store.summary().total,1);const id=data.orders[0].id;
+  data=await(await call('/api/test/send',{text:'/pago '+id})).json();assert.equal(data.orders[0].state,'pending');assert.ok(data.messages.some(m=>m.text.includes('reservado')));
+  data=await(await call('/api/test/send',{text:'/pago '+id,role:'admin'})).json();assert.equal(data.orders[0].state,'sent');assert.ok(data.messages.some(m=>m.audience==='customer'&&m.text.includes('Compra efetuada com sucesso')));
+  await call('/api/test/send',{text:'/pago '+real.id,role:'admin'});assert.equal(t.store.get(real.id).state,'pending');assert.equal(outgoing,0);
+  const firstCookie=cookie,firstCsrf=csrf;
+  login=await call('/api/login',{password:'senha-simulador-teste'});cookie=login.headers.get('set-cookie').split(';')[0];csrf=(await login.json()).csrf;assert.equal((await(await call('/api/test')).json()).totalOrders,0);
+  cookie=firstCookie;csrf=firstCsrf;assert.equal((await(await call('/api/test')).json()).totalOrders,1);
+  data=await(await call('/api/test/reset',{})).json();assert.equal(data.totalOrders,0);assert.equal(data.messages.length,0);assert.equal(t.store.summary().total,1);assert.equal(outgoing,0);
+ }finally{await new Promise(r=>server.close(r));await t.cleanup();}
+});
