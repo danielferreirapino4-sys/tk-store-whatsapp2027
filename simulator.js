@@ -17,14 +17,15 @@ export class Simulator {
       store: this.store,
       adminJid: this.admin,
       shopUrl: 'https://loja.exemplo.test/',
+      sendChoices: async (jid,payload)=>{this.append('bot',jid===this.admin?'admin':'customer',payload.text,payload.options);},
       send: async (jid, text) => {
         this.append('bot', jid === this.admin ? 'admin' : 'customer', text);
       }
     });
   }
-  append(role, audience, text) {
+  append(role, audience, text, options) {
     this.sequence++;
-    this.messages.push({ role, audience, text, time: Date.now() });
+    this.messages.push({ role, audience, text, ...(options?{options}:{}), time: Date.now() });
     if (this.messages.length > 120) this.messages.splice(0, this.messages.length - 120);
   }
   view() {
@@ -48,7 +49,8 @@ export class Simulator {
     if (!['customer', 'admin'].includes(role)) throw new Error('Papel de teste inválido.');
     return this.enqueue(async () => {
       const jid = role === 'admin' ? this.admin : this.customer;
-      this.append(role, role, text.trim());
+      const selected=[...this.messages].reverse().flatMap(m=>m.options||[]).find(o=>o.id===text.trim());
+      this.append(role, role, selected?selected.title:text.trim());
       const before = this.sequence;
       await this.handler({ jid, phoneJid: jid, text: text.trim() });
       // O bot real ignora mensagens fora dos comandos; deixe isso claro no teste.

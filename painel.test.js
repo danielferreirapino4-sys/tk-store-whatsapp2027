@@ -65,7 +65,7 @@ test('simulador usa atendimento real e mantém pagamentos fora do WhatsApp e do 
   assert.equal((await call('/api/test')).status,401);
   let login=await call('/api/login',{password:'senha-simulador-teste'});cookie=login.headers.get('set-cookie').split(';')[0];csrf=(await login.json()).csrf;
   assert.equal((await call('/api/test/send',{text:'/start'},false)).status,403);
-  let data=await(await call('/api/test/send',{text:'/start'})).json();assert.equal(data.simulated,true);assert.ok(data.messages.some(m=>m.text.includes('TK STORE')));
+  let data=await(await call('/api/test/send',{text:'/start'})).json();assert.equal(data.simulated,true);assert.ok(data.messages.some(m=>m.text.includes('xirax 6.1')));
   data=await(await call('/api/test/send',{text:'/comprar 01'})).json();assert.equal(data.totalOrders,1);assert.equal(t.store.summary().total,1);const id=data.orders[0].id;
   data=await(await call('/api/test/send',{text:'/pago '+id})).json();assert.equal(data.orders[0].state,'pending');assert.ok(data.messages.some(m=>m.text.includes('reservado')));
   data=await(await call('/api/test/send',{text:'/pago '+id,role:'admin'})).json();assert.equal(data.orders[0].state,'sent');assert.ok(data.messages.some(m=>m.audience==='customer'&&m.text.includes('Compra efetuada com sucesso')));

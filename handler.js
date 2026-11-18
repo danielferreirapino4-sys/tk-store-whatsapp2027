@@ -1,10 +1,20 @@
 import { catalog,money,MENU } from './catalog.js';
 import { confirm } from './store.js';
-export function createHandler({store,adminJid,send,shopUrl}) {
+import { createSupport } from './support.js';
+import { createDeviceFlow } from './device-flow.js';
+import { choices,choiceText } from './interactive.js';
+export function createHandler({store,adminJid,send,sendChoices,shopUrl}) {
+ const support=createSupport({store,adminJid,send});
+ const deviceFlow=createDeviceFlow({store,adminJid,send,sendChoices});
  return async ({jid,phoneJid,text})=>{
+  if(!store.deviceFlow(phoneJid))text=({'5':'/tv','6':'/celular','7':'/dispositivos','8':'/teste','9':'/suporte','10':'/renovacao'})[text.trim()]||text;
+  if(await deviceFlow({jid,phoneJid,text}))return;
+  if(await support({jid,phoneJid,text}))return;
   const value=text.trim(),lower=value.toLowerCase();
+  if(lower==='/versao')return send(jid,'🤖 xirax · Versão 6.1');
+  if(lower==='/dono')return send(jid,'👑 Dono do xirax: TKPLAYTV');
   if(phoneJid===adminJid){
-   if(lower==='/admin')return send(jid,'*TK STORE — responsável*\n/pedidos — pendências\n/pago ID — confirmar Pix conferido e avisar cliente\n/status ID — consultar pedido\n/valor ID 20,00 — ajustar valor combinado\n/pago não confirma recebimento no banco: use somente após conferir.');
+   if(lower==='/admin')return send(jid,'*TK STORE — responsável*\n/pedidos — pendências\n/pago ID — confirmar Pix conferido e avisar cliente\n/status ID — consultar pedido\n/valor ID 20,00 — ajustar valor combinado\n/testes — solicitações de teste por aparelho\n/encerrarteste CODIGO — encerrar registro de teste\n/fila — suporte com número de atendimento\n/chamar — chamar próximo cliente\n/assumir NUMERO — iniciar suporte\n/aguardar NUMERO — aguardar cliente\n/concluir NUMERO — finalizar suporte\n/pago não confirma recebimento no banco: use somente após conferir.');
    if(lower==='/pedidos')return send(jid,store.list().map(o=>`${o.id} · ${o.product} · ${money(o.cents)} · ${o.state}`).join('\n')||'Nenhum pedido pendente.');
    if(/^\/pago\s+/i.test(value))return send(jid,await confirm(store,value.split(/\s+/)[1].toUpperCase(),send));
    if(/^\/valor\s+/i.test(value)) {
@@ -18,15 +28,16 @@ export function createHandler({store,adminJid,send,shopUrl}) {
    if(/^\/status\s+/i.test(value)) {const o=store.get(value.split(/\s+/)[1].toUpperCase());return send(jid,o?`${o.id}: ${o.state}`:'Pedido não encontrado.');}
   }
   if(/^\/(pago|pedidos|admin|status|valor)\b/i.test(value))return send(jid,'Comando reservado ao responsável.');
-  if(['start','/start','menu','oi','olá','ola'].includes(lower))return send(jid,MENU);
+  if(['start','/start','/menu','menu','oi','olá','ola'].includes(lower)){
+   const menu=choices('🤖 *xirax 6.1* · TKPLAYTV\nOlá! Escolha uma opção para ver os serviços, informar seu aparelho ou solicitar um teste.\nDisponibilidade e compatibilidade são confirmadas pelo atendimento.',[
+    {id:'1',title:'Streaming e séries'},{id:'2',title:'Música'},{id:'3',title:'IA e produtividade'},{id:'4',title:'Educação e games'},
+    {id:'/tv',title:'TV / Smart TV'},{id:'/celular',title:'Celular'},{id:'/dispositivos',title:'Outros dispositivos'},{id:'/teste',title:'Solicitar teste'},{id:'/suporte',title:'Suporte com número'},{id:'/renovacao',title:'Renovação'}
+   ],'Menu xirax 6.1','Abrir menu');
+   return sendChoices?sendChoices(jid,menu):send(jid,choiceText(menu));
+  }
   const categories={'1':'streaming','2':'musica','3':'digital','4':'outros','5':'tv'};
   if(categories[value])return send(jid,catalog.filter(p=>p.category===categories[value]).map(p=>`*${p.id}* — ${p.name}: ${money(p.cents)}\n${p.terms}`).join('\n\n')+'\n\nExemplo: /comprar 01\nRenovação: /renovar 01\nConsulte disponibilidade antes de pagar.');
-  if(value==='6'||value==='8') {
-   await send(jid,value==='6'?'Informe o modelo do aparelho e aguarde o atendimento para verificar o teste de até 4 horas.':'Descreva sua dúvida ou problema. O atendimento continuará por aqui.');
-   if(adminJid!==phoneJid)await send(adminJid,`TK STORE: solicitação de ${value==='6'?'teste':'suporte'} recebida. Consulte as conversas do WhatsApp da loja.`);
-   return;
-  }
-  if(value==='7')return send(jid,'Consulte a categoria do seu plano e envie /renovar CÓDIGO. O preço e as condições da renovação serão confirmados pelo atendimento antes do pagamento.');
+  if(lower==='/renovacao'||lower==='/renovar')return send(jid,'Consulte a categoria do seu plano e envie /renovar CÓDIGO. O preço e as condições da renovação serão confirmados pelo atendimento antes do pagamento.');
   const match=value.match(/^\/(comprar|renovar)\s+(\d{1,2})$/i);
   if(match){
    const p=catalog.find(p=>p.id===match[2].padStart(2,'0'));

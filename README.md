@@ -1,6 +1,40 @@
-# TK STORE — painel organizado por páginas · versão 1.2
+# TK STORE — painel organizado por páginas · versão 1.4 · bot xirax 6.1
 
 Nova versão com painel no navegador: informe o número do bot e o número do responsável, gere o código e digite-o no WhatsApp. Código, estado da conexão e pedidos ficam protegidos por senha. Não precisa colocar telefones no JavaScript nem procurar códigos nos logs.
+
+## Menu clicável e teste por dispositivo
+O menu principal agora oferece TV / Smart TV, Celular e Outros dispositivos. O formulário conversacional suporta TV, celular, tablet, computador/notebook, TV Box, console, projetor e outro aparelho.
+
+Fluxos:
+- Cliente escreve /teste ou uma solicitação como “Olá, quero um teste”: pede primeiro o nome, depois dispositivo, marca, modelo/linha e confirmação.
+- Cliente toca em TV ou Celular no menu: abre as marcas desse dispositivo, depois os modelos/linhas e pede o nome antes de confirmar.
+- /dispositivos abre a lista completa de tipos de aparelho.
+- “Outra marca / digitar”, “Digitar outro modelo” e “Não sei o modelo” permitem identificar aparelhos fora dos exemplos. As listas são exemplos de identificação, não garantia de suporte ou licença. Modelos desconhecidos ficam indicados para o atendimento conferir.
+- Enviar solicitação salva o protocolo T000001 e avisa o responsável com nome, aparelho, marca e modelo. Não ativa teste, não cria acesso e não confirma compatibilidade.
+- /testes lista solicitações pendentes para o responsável. /encerrarteste T000001 encerra o registro depois do atendimento, sem ativação automática.
+- /cancelarteste cancela somente o formulário ainda em preenchimento; /start ou /menu volta ao menu. Para mudar uma solicitação já enviada, falar com o suporte.
+
+As escolhas são serializadas como listas native-flow pelo SDK Baileys instalado. Sua exibição e aceitação dependem da versão do WhatsApp e do suporte da conexão não oficial. O servidor envia também o texto com opções numeradas, para continuar o atendimento se o cartão interativo não aparecer. Não foi feito pareamento ou envio real nesta atualização. O simulador do painel renderiza os botões e usa os mesmos identificadores e regras.
+
+Os modelos/linhas de exemplo ficam em devices.js. Cadastre modelos específicos usados pela loja nesse arquivo. Nenhum catálogo representa todos os modelos existentes. Rascunhos ficam em SQLite e expiram após 24 horas de inatividade. Solicitações completas ficam salvas para o responsável e não são duplicadas enquanto houver uma pendente para o cliente.
+
+**Aplicar:** envie todos os arquivos deste ZIP para a pasta principal do repositório. Os novos arquivos essenciais são interactive.js, devices.js e device-flow.js. Também foram atualizados handler.js, store.js, manager.js, whatsapp.js, simulator.js e painel.html. Faça uma única implantação com todos os arquivos. O comando permanece node server.js.
+
+## Fila de atendimento — xirax 6.1 · TKPLAYTV
+Esta atualização cria suporte com números sequenciais a partir de #000001. Os números são gerados quando o cliente pede atendimento, não antecipadamente.
+- Cliente: /suporte ou opção 8 abre atendimento. Repetir mantém o mesmo número aberto. Pode acrescentar motivo: /suporte problema na TV.
+- /minhafila consulta o atendimento mais recente do próprio cliente, posição e status.
+- /sairdafila cancela o atendimento aberto e atualiza a posição dos demais.
+- Responsável: /fila (ou /fila 2) lista atendimentos em páginas de 20. /chamar chama o primeiro aguardando, seguindo a ordem dos números.
+- /assumir NUMERO coloca em atendimento. /aguardar NUMERO marca como aguardando resposta do cliente. /concluir NUMERO finaliza.
+- /cancelaratendimento NUMERO MOTIVO cancela e informa o motivo. /atendimento NUMERO consulta detalhes e link da conversa quando o número puder ser identificado.
+- O cliente recebe aviso ao mudar de status e quando sua posição avança. Mensagens fora dos comandos não alteram automaticamente o status nem substituem o atendimento humano. Não há estimativa de espera automática.
+- Ninguém consegue consultar ou alterar o atendimento de outro cliente usando comandos de cliente. Os comandos administrativos são restritos ao WhatsApp responsável configurado.
+- A fila é guardada no mesmo banco SQLite da loja. Uma tabela nova é criada sem apagar pedidos existentes. Precisa de disco persistente no Render para sobreviver à perda de arquivos do servidor.
+- Se um aviso falhar, o responsável recebe alerta e deve conferir a conversa; não há repetição automática indiscriminada.
+- /versao mostra xirax 6.1; /dono mostra TKPLAYTV. O painel da loja continua identificado como TK STORE.
+
+Para aplicar esta atualização de fila, substitua store.js, handler.js e catalog.js e adicione support.js. Substitua painel.html para mostrar os novos comandos de ajuda. Faça uma única implantação com todos esses arquivos. O comando permanece node server.js.
 
 ## Testar bot sem outro número
 A página **Testar bot** é uma conversa simulada, não um número de telefone real. Não recebe SMS, não usa serviços de números virtuais, não contorna cadastro no WhatsApp e não envia mensagens reais. Funciona mesmo que a sessão WhatsApp esteja desconectada.
@@ -77,6 +111,10 @@ Para testar localmente: Node >=22.13, npm ci, definir PANEL_PASSWORD no ambiente
 
 Referências: https://render.com/docs/web-services · https://render.com/docs/disks · https://render.com/docs/free · https://github.com/WhiskeySockets/docs/blob/main/authentication/pairing-code.mdx
 
-Validação da versão 1.2: paginação e filtros testados com 20 pedidos, sem lacunas ou duplicatas; resumo de estados verificado; navegação, busca e suporte verificados com DOM simulado. Não houve implantação na conta do usuário nesta atualização.
+Validação da versão 1.4 · bot xirax 6.1: paginação e filtros testados com 20 pedidos, sem lacunas ou duplicatas; resumo de estados verificado; navegação, busca e suporte verificados com DOM simulado. Não houve implantação na conta do usuário nesta atualização.
 
 Validação do simulador: testes confirmam isolamento do banco real, nenhum envio pelo transporte real, bloqueio de confirmação pelo cliente, separação entre logins, reset isolado e fluxo completo de compra pelo DOM.
+
+Validação da fila: testes de números sequenciais e persistência, ausência de duplicação, autorização, chamada FIFO, atualização de posições, cancelamento, transições de status e isolamento no simulador. Não implantado na conta do usuário automaticamente.
+
+Validação do fluxo de aparelhos: testes de TV com marca/modelo clicáveis, nome obrigatório, pedido natural de teste, marca e modelo digitados, identificação desconhecida, respostas numéricas por etapa, persistência e cancelamento. DOM: cliques do menu até confirmar solicitação testados. Protobuf da lista native-flow serializado pelo SDK sem envio externo. Exibição real no WhatsApp precisa ser validada após implantação.

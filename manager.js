@@ -2,6 +2,7 @@ import { mkdirSync,readFileSync,writeFileSync,renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash,randomBytes } from 'node:crypto';
 import { createHandler } from './handler.js';
+import {extractText,choiceText} from './interactive.js';
 export function normalizePhone(value) {
  const p=String(value||'').replace(/[\s()+-]/g,'');
  if(!/^[1-9]\d{9,14}$/.test(p))throw new Error('Informe DDI, DDD e número. Exemplo: 55 11 99999-9999.');
@@ -46,12 +47,17 @@ export class Manager {
    if(gen!==this.generation||this.state.status!=='connected')throw Error('WhatsApp desconectado');
    const sent=await current.send(jid,text);if(!sent?.key?.id)throw Error('Sem confirmação');return sent;
   };
-  const handle=createHandler({store:this.store,adminJid:config.admin+'@s.whatsapp.net',send,shopUrl:this.shopUrl});
+  const sendChoices=async(jid,payload)=>{
+   if(gen!==this.generation||this.state.status!=='connected')throw Error('WhatsApp desconectado');
+   const sent=current.sendChoices?await current.sendChoices(jid,payload):await send(jid,choiceText(payload));
+   if(!sent?.key?.id)throw Error('Sem confirmação da lista');return sent;
+  };
+  const handle=createHandler({store:this.store,adminJid:config.admin+'@s.whatsapp.net',send,sendChoices,shopUrl:this.shopUrl});
   current.onMessages(({messages,type})=>{
    if(type!=='notify')return;
    for(const m of messages)this.queue=this.queue.then(async()=>{
     if(gen!==this.generation||this.stopping||m.key.fromMe)return;
-    const jid=m.key.remoteJid,text=m.message?.conversation||m.message?.extendedTextMessage?.text;
+    const jid=m.key.remoteJid,text=extractText(m.message);
     if(!jid||!/@(s\.whatsapp\.net|lid)$/.test(jid)||!text||!m.key.id)return;
     const id=jid+':'+m.key.id;if(this.store.seen(id))return;this.store.mark(id);
     const phoneJid=await current.resolvePhone(m.key.remoteJidAlt||jid);
