@@ -17,6 +17,27 @@ export class Store {
  }
  get(id) {return this.db.prepare('SELECT * FROM orders WHERE id=?').get(id);}
  list() {return this.db.prepare("SELECT * FROM orders WHERE state!='sent' ORDER BY created DESC LIMIT 20").all();}
+ page({page=1,pageSize=8,state='open',product='',search=''}={}) {
+  pageSize=Math.max(1,Math.min(20,Number.parseInt(pageSize)||8));
+  const clauses=[],args=[];
+  if(state==='open')clauses.push("state!='sent'");
+  else if(['pending','sent','uncertain','sending'].includes(state)){clauses.push('state=?');args.push(state);}
+  else if(state!=='all')throw Error('Filtro de estado inválido.');
+  if(product){clauses.push('product=?');args.push(String(product).slice(0,200));}
+  if(search){clauses.push('(product LIKE ? OR id LIKE ?)');const term='%'+String(search).slice(0,100)+'%';args.push(term,term);}
+  const where=clauses.length?' WHERE '+clauses.join(' AND '):'';
+  const total=this.db.prepare('SELECT COUNT(*) AS n FROM orders'+where).get(...args).n;
+  const totalPages=Math.max(1,Math.ceil(total/pageSize));page=Math.max(1,Math.min(totalPages,Number.parseInt(page)||1));
+  const orders=this.db.prepare('SELECT * FROM orders'+where+' ORDER BY created DESC,rowid DESC LIMIT ? OFFSET ?').all(...args,pageSize,(page-1)*pageSize);
+  return {orders,page,pageSize,total,totalPages};
+ }
+ summary() {
+  const states=this.db.prepare('SELECT state,COUNT(*) AS count FROM orders GROUP BY state').all();
+  const byProduct=this.db.prepare(`SELECT product,COUNT(*) AS total,SUM(CASE WHEN state='pending' THEN 1 ELSE 0 END) AS pending FROM orders GROUP BY product`).all();
+  const counts={total:0,pending:0,sent:0,uncertain:0,sending:0};
+  for(const row of states){counts[row.state]=row.count;counts.total+=row.count;}
+  return {...counts,byProduct};
+ }
  claim(id) {return this.db.prepare("UPDATE orders SET state='sending' WHERE id=? AND state='pending'").run(id).changes===1;}
  finish(id,state) {if(!['sent','uncertain'].includes(state))throw Error('Estado inválido'); this.db.prepare('UPDATE orders SET state=? WHERE id=?').run(state,id);}
  close(){this.db.close();}

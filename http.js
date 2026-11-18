@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { randomBytes,scryptSync,timingSafeEqual } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { confirm } from './store.js';
+import { catalog } from './catalog.js';
 export function makeServer({manager,store,password,htmlPath}){
  if(!password||password.length<12)throw Error('Configure PANEL_PASSWORD com pelo menos 12 caracteres no Render.');
  const salt=randomBytes(16),hash=scryptSync(password,salt,32),sessions=new Map();
@@ -38,7 +39,12 @@ export function makeServer({manager,store,password,htmlPath}){
    const s=session(req);
    if(!s){json(res,401,{error:'Entre com sua senha do painel.'});return;}
    if(path==='/api/state'&&req.method==='GET'){json(res,200,{...manager.view(),csrf:s.csrf});return;}
-   if(path==='/api/orders'&&req.method==='GET'){json(res,200,{orders:store.list()});return;}
+   if(path==='/api/orders'&&req.method==='GET'){
+    const q=new URL(req.url,'http://localhost').searchParams;
+    json(res,200,store.page({page:q.get('page'),pageSize:q.get('pageSize'),state:q.get('state')||'open',product:q.get('product')||'',search:q.get('search')||''}));return;
+   }
+   if(path==='/api/catalog'&&req.method==='GET'){json(res,200,{items:catalog});return;}
+   if(path==='/api/stats'&&req.method==='GET'){json(res,200,store.summary());return;}
    if(req.method!=='POST'){json(res,405,{error:'Método não permitido.'});return;}
    if(req.headers['x-csrf-token']!==s.csrf){json(res,403,{error:'Sessão inválida. Entre novamente.'});return;}
    const data=await body(req);

@@ -1,1 +1,17 @@
-{"name":"tk-store-painel","version":"1.0.0","private":true,"type":"module","engines":{"node":">=22.13.0"},"scripts":{"start":"node server.js","test":"node --test *.test.js"},"dependencies":{"@whiskeysockets/baileys":"7.0.0-rc14","pino":"^9.0.0"}}
+{
+  "name": "tk-store-painel",
+  "version": "1.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test *.test.js"
+  },
+  "dependencies": {
+    "@whiskeysockets/baileys": "7.0.0-rc14",
+    "pino": "^9.0.0"
+  }
+}

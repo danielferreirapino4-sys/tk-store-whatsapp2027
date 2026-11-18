@@ -47,3 +47,10 @@ test('confirmação simultânea só envia uma vez; falha não é repetida',async
  const s=new Store(':memory:');let sent=0;const o=s.create('cliente',{name:'P',cents:100},'compra');const send=async()=>{sent++;await new Promise(r=>setTimeout(r,5));};await Promise.all([confirm(s,o.id,send),confirm(s,o.id,send)]);assert.equal(sent,1);
  const fail=s.create('cliente',{name:'Outro',cents:100},'compra');let tries=0;const broken=async()=>{tries++;throw Error('timeout');};await confirm(s,fail.id,broken);await confirm(s,fail.id,broken);assert.equal(tries,1);assert.equal(s.get(fail.id).state,'uncertain');s.close();
 });
+test('paginação por serviço cobre todos os pedidos e conta estados reais',()=>{
+ const s=new Store(':memory:');const p={name:'Serviço A',cents:1000};for(let i=0;i<19;i++)s.create('cliente'+i,p,'compra');s.create('outro',{name:'Serviço B',cents:2000},'compra');
+ const first=s.page({product:p.name,page:1,pageSize:8}),second=s.page({product:p.name,page:2,pageSize:8}),third=s.page({product:p.name,page:3,pageSize:8});
+ assert.equal(first.total,19);assert.equal(first.totalPages,3);assert.equal(first.orders.length,8);assert.equal(third.orders.length,3);assert.equal(new Set([...first.orders,...second.orders,...third.orders].map(o=>o.id)).size,19);
+ const id=first.orders[0].id;s.claim(id);s.finish(id,'sent');assert.equal(s.page({product:p.name,state:'open'}).total,18);assert.equal(s.page({product:p.name,state:'sent'}).total,1);assert.equal(s.page({search:'Serviço B',state:'all'}).total,1);assert.equal(s.page({page:999}).page,3);
+ const totals=s.summary();assert.equal(totals.total,20);assert.equal(totals.pending,19);assert.equal(totals.sent,1);assert.equal(totals.byProduct.find(p=>p.product==='Serviço A').total,19);s.close();
+});

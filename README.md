@@ -1,6 +1,20 @@
-# TK STORE — painel de conexão WhatsApp
+# TK STORE — painel organizado por páginas · versão 1.1
 
 Nova versão com painel no navegador: informe o número do bot e o número do responsável, gere o código e digite-o no WhatsApp. Código, estado da conexão e pedidos ficam protegidos por senha. Não precisa colocar telefones no JavaScript nem procurar códigos nos logs.
+
+## Atualizar o painel já conectado
+Substitua no GitHub os arquivos painel.html, http.js e store.js pelos desta versão. São os três arquivos necessários para a nova navegação. Os outros arquivos do pacote permitem uma instalação completa. O Start Command continua node server.js, e a senha continua em PANEL_PASSWORD no ambiente. Faça Deploy latest commit no Render e atualize a página do painel. Não cole o HTML dentro do bot.js.
+
+A atualização não migra nem apaga tabelas do banco. Em hospedagem sem disco persistente, uma nova implantação pode perder a sessão e os pedidos pelo funcionamento do próprio ambiente; nesse caso, pareie novamente pelo painel. Antes de operar continuamente, configure armazenamento persistente.
+
+## Novas páginas
+- Início: resumo com contagens reais de pedidos e atalhos por categoria.
+- WhatsApp: formulário e código de pareamento.
+- Pedidos: busca, filtro por serviço e estado, até 8 pedidos por página, indicação Página X de Y. Inclui histórico de confirmações enviadas.
+- Serviços: categorias com quantidade de serviços e páginas, até 6 serviços por página, busca e comandos de compra. Cada serviço mostra o total de pedidos e pendências.
+- Suporte: quatro cartões grandes para contato com o responsável, conexão, pedidos e comandos; perguntas frequentes.
+
+As contagens de páginas são calculadas a partir dos dados reais, não são valores fixos. Os contadores não representam licenças ou vagas de estoque. Não foi adicionado sistema de chamados; o suporte abre o WhatsApp do responsável cadastrado.
 
 ## Aplicar no Render que você já criou
 1. Extraia TK_STORE_Painel.zip no celular.
@@ -51,3 +65,5 @@ Testes locais com transporte simulado: validação de números diferentes; gera�
 Para testar localmente: Node >=22.13, npm ci, definir PANEL_PASSWORD no ambiente e executar npm start. Abra http://localhost:3000. Testes: npm test. Não há senha padrão.
 
 Referências: https://render.com/docs/web-services · https://render.com/docs/disks · https://render.com/docs/free · https://github.com/WhiskeySockets/docs/blob/main/authentication/pairing-code.mdx
+
+Validação da versão 1.1: paginação e filtros testados com 20 pedidos, sem lacunas ou duplicatas; resumo de estados verificado; navegação, busca e suporte verificados com DOM simulado. Não houve implantação na conta do usuário nesta atualização.
