@@ -61,8 +61,8 @@ async function start(){
 }
 async function stop(){stopping=true;clearTimeout(reconnectTimer);await queue; sock?.end(undefined);store.close();process.exit(0);}
 process.on('SIGTERM',stop);process.on('SIGINT',stop);
- na inicialização. Confira as variáveis e a conexão.');process.exit(1);});
-start().catch((erro) => {
+ 
+
   console.error("Falha ao iniciar:", erro.message);
   process.exit(1);
-});
+
