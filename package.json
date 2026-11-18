@@ -1,0 +1,1 @@
+{"name":"tk-store-whatsapp","version":"1.0.0","private":true,"type":"module","engines":{"node":">=22.13.0"},"scripts":{"start":"node --env-file-if-exists=.env src/bot.js","test":"node --test"},"dependencies":{"@whiskeysockets/baileys":"7.0.0-rc14","pino":"^9.0.0"}}

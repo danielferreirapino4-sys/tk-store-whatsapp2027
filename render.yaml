@@ -1,0 +1,23 @@
+services:
+  - type: worker
+    name: tk-store-whatsapp
+    runtime: node
+    plan: starter
+    buildCommand: npm ci
+    startCommand: npm start
+    numInstances: 1
+    envVars:
+      - key: NODE_VERSION
+        value: 24.22.1
+      - key: BOT_PHONE_NUMBER
+        sync: false
+      - key: ADMIN_PHONE_NUMBER
+        sync: false
+      - key: DATA_DIR
+        value: /data
+      - key: SHOP_URL
+        value: https://tkplaytv.tkplaytv9.chatgpt.site/
+    disk:
+      name: tk-store-data
+      mountPath: /data
+      sizeGB: 1
